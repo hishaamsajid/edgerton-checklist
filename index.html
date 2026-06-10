@@ -434,7 +434,7 @@ const DAYS     = ["Mon","Tues","Weds","Thurs","Fri"];
 const SURGERIES= Array.from({length:10},(_,i)=>`Surgery ${i+1}`);
 
 // ── STATE ─────────────────────────────────────────────────────────────────
-let selectedDay  = DAYS[0];
+let selectedDay  = null; // will be set to today's date string
 let selectedSurg = null;
 let selectedType = null; // 'start'|'end'
 let currentDoc   = null; // live Firestore data for open checklist
@@ -444,7 +444,12 @@ let homeListeners= [];
 
 // ── HELPERS ───────────────────────────────────────────────────────────────
 function docId(surgery, day, type) {
+  // day is now a full date string e.g. "2024-06-10"
   return `${surgery.replace(/ /g,'_')}__${day}__${type}`;
+}
+function getDayName(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return ['Sun','Mon','Tues','Weds','Thurs','Fri','Sat'][d.getDay()];
 }
 function itemsFor(type) { return type==='start'?START_ITEMS:END_ITEMS; }
 
@@ -461,28 +466,97 @@ function setLoading(on) {
 const today = new Date();
 document.getElementById('date-chip').textContent =
   today.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
-// Auto-select today's day
-const dayMap = {1:'Mon',2:'Tues',3:'Weds',4:'Thurs',5:'Fri'};
-if (dayMap[today.getDay()]) selectedDay = dayMap[today.getDay()];
+
+// Helper: get ISO date string for a given offset from today (0=today, -1=yesterday, etc.)
+function getDateStr(offset) {
+  const d = new Date(); d.setDate(d.getDate() + offset);
+  return d.toISOString().split('T')[0]; // "YYYY-MM-DD"
+}
+function formatDateLabel(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+}
+// Build the week dates (Mon-Fri of the currently viewed week)
+let weekOffset = 0; // 0 = current week, -1 = last week, etc.
+function getWeekDates(offset) {
+  const now = new Date();
+  // Get Monday of the week with offset
+  const day = now.getDay(); // 0=Sun,1=Mon...
+  const diffToMon = (day === 0 ? -6 : 1 - day) + (offset * 7);
+  const dates = [];
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() + diffToMon + i);
+    dates.push(d.toISOString().split('T')[0]);
+  }
+  return dates;
+}
+// Set selectedDay to today if weekday, else Monday
+const todayStr = today.toISOString().split('T')[0];
+const todayDow = today.getDay();
+selectedDay = (todayDow >= 1 && todayDow <= 5) ? todayStr : getWeekDates(0)[0];
 
 // ── BUILD HOME ────────────────────────────────────────────────────────────
-function buildDayRow(containerId, current, onChange) {
+function buildDayRow(containerId, current, onChange, useWeekNav) {
   const el = document.getElementById(containerId);
   el.innerHTML = '';
-  DAYS.forEach(d => {
-    const btn = document.createElement('button');
-    btn.className = 'day-btn' + (d===current?' active':'');
-    btn.textContent = d;
-    btn.onclick = () => onChange(d);
-    el.appendChild(btn);
-  });
+
+  if (useWeekNav) {
+    // Week navigation row
+    const weekDates = getWeekDates(weekOffset);
+    const weekStart = formatDateLabel(weekDates[0]);
+    const weekEnd   = formatDateLabel(weekDates[4]);
+
+    const nav = document.createElement('div');
+    nav.style.cssText = 'display:flex;align-items:center;gap:8px;width:100%;margin-bottom:8px;';
+    nav.innerHTML = `
+      <button onclick="changeWeek(-1)" style="background:#fff;border:2px solid #d5e8f5;border-radius:8px;padding:6px 12px;font-weight:700;color:#1a5276;cursor:pointer;font-size:13px;">◀</button>
+      <div style="flex:1;text-align:center;font-size:12px;font-weight:700;color:#1a5276;background:#eaf2f8;border-radius:8px;padding:7px 10px;">
+        ${weekOffset === 0 ? 'This Week' : weekOffset === -1 ? 'Last Week' : `${weekOffset < 0 ? Math.abs(weekOffset)+' weeks ago' : weekOffset+' weeks ahead'}`}
+        <span style="color:#7f8c8d;font-weight:500;"> · ${weekStart} – ${weekEnd}</span>
+      </div>
+      <button onclick="changeWeek(1)" style="background:#fff;border:2px solid #d5e8f5;border-radius:8px;padding:6px 12px;font-weight:700;color:#1a5276;cursor:pointer;font-size:13px;">▶</button>
+    `;
+    el.appendChild(nav);
+
+    const dayRow = document.createElement('div');
+    dayRow.style.cssText = 'display:flex;gap:8px;width:100%;';
+    weekDates.forEach((dateStr, i) => {
+      const btn = document.createElement('button');
+      const isToday = dateStr === todayStr;
+      btn.className = 'day-btn' + (dateStr===current?' active':'');
+      btn.innerHTML = `<div style="font-size:11px;opacity:.75">${DAYS[i]}</div><div style="font-size:12px">${dateStr.slice(8)}</div>${isToday?'<div style="font-size:9px;margin-top:1px;opacity:.8">today</div>':''}`;
+      btn.style.padding = '6px 4px';
+      btn.onclick = () => onChange(dateStr);
+      dayRow.appendChild(btn);
+    });
+    el.appendChild(dayRow);
+  } else {
+    // Report: flat list of all unique days that have data, grouped
+    DAYS.forEach(d => {
+      const btn = document.createElement('button');
+      btn.className = 'day-btn' + (d===current?' active':'');
+      btn.textContent = d;
+      btn.onclick = () => onChange(d);
+      el.appendChild(btn);
+    });
+  }
 }
+
+function changeWeek(dir) {
+  weekOffset += dir;
+  const weekDates = getWeekDates(weekOffset);
+  // Select first day of new week by default
+  selectedDay = weekDates[0];
+  buildHome();
+}
+window.changeWeek = changeWeek;
 
 function buildHome() {
   buildDayRow('day-row', selectedDay, d => {
     selectedDay = d;
     buildHome();
-  });
+  }, true); // useWeekNav=true
   const grid = document.getElementById('surgery-grid');
   grid.innerHTML = '';
 
@@ -624,7 +698,7 @@ async function toggleItem(item, val) {
   await setDoc(ref, {
     ...existing,
     items: { ...existing.items, [item]: val },
-    surgery: selectedSurg, day: selectedDay, type: selectedType
+    surgery: selectedSurg, day: selectedDay, dayName: getDayName(selectedDay), type: selectedType
   }, {merge:true});
 }
 
@@ -641,7 +715,7 @@ async function submitChecklist() {
     nurseSignature: nurse,
     managerSignature: manager,
     submittedAt: new Date(),
-    surgery: selectedSurg, day: selectedDay, type: selectedType
+    surgery: selectedSurg, day: selectedDay, dayName: getDayName(selectedDay), type: selectedType
   }, {merge:true});
   setLoading(false);
   showToast('✓ Checklist submitted!');
@@ -699,8 +773,8 @@ async function openReport() {
     await loadReport();
     buildDayRow('report-day-row', reportFilter, async d2 => {
       reportFilter = d2; await loadReport();
-    });
-  });
+    }, false);
+  }, false);
   await loadReport();
   setLoading(false);
 }
@@ -716,7 +790,8 @@ async function loadReport() {
   let docs = [];
   snap.forEach(d => { if (d.data().submittedAt) docs.push(d.data()); });
 
-  if (reportFilter !== 'All') docs = docs.filter(d => d.day === reportFilter);
+  // reportFilter is now a day name like 'Mon' - match against stored day field
+  if (reportFilter !== 'All') docs = docs.filter(d => d.dayName === reportFilter);
 
   // Sort newest first
   docs.sort((a,b) => {
@@ -761,7 +836,7 @@ async function loadReport() {
         <div>
           <span class="report-card-id">${d.surgery}</span>
           <span class="report-card-type"> · ${d.type==='start'?'Start of Day':'End of Day'}</span>
-          <span class="report-card-day"> · ${d.day}</span>
+          <span class="report-card-day"> · ${d.dayName||''} ${d.day}</span>
         </div>
         <span class="${allDone?'report-status-full':'report-status-part'}">${allDone?'✓ Complete':`${checked}/${items.length}`}</span>
       </div>
