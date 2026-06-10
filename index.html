@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Edgerton Dental Clinic – Surgery Checklists</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #eef2f7;
+    min-height: 100vh;
+    color: #1a2e44;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    background: #fff;
+    border-bottom: 1px solid #dce7f3;
+    padding: 0 24px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(26,82,118,.07);
+  }
+  .topbar-left { display: flex; align-items: center; gap: 12px; }
+  .tooth-icon { width: 36px; height: 36px; }
+  .brand-name { font-size: 15px; font-weight: 800; color: #1a5276; line-height: 1.1; }
+  .brand-sub  { font-size: 11px; color: #7f8c8d; font-weight: 500; }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+  .date-chip {
+    background: #eaf2f8; color: #1a5276;
+    font-size: 12px; font-weight: 700;
+    padding: 5px 12px; border-radius: 20px;
+  }
+  .report-btn {
+    background: #1a5276; color: #fff;
+    border: none; border-radius: 8px;
+    padding: 8px 16px; font-size: 13px; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; gap: 6px;
+    transition: background .15s;
+  }
+  .report-btn:hover { background: #154360; }
+
+  /* ── VIEWS ── */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ── HOME ── */
+  .home-wrap { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+  .section-label {
+    font-size: 10px; font-weight: 800; letter-spacing: .1em;
+    text-transform: uppercase; color: #95a5a6; margin-bottom: 10px; margin-top: 4px;
+  }
+
+  /* Day selector */
+  .day-row { display: flex; gap: 8px; margin-bottom: 24px; }
+  .day-btn {
+    flex: 1; padding: 10px 4px; border: 2px solid #d5e8f5;
+    border-radius: 10px; background: #fff; color: #5d8aa8;
+    font-weight: 600; font-size: 13px; cursor: pointer;
+    transition: all .12s;
+  }
+  .day-btn:hover { border-color: #1a5276; color: #1a5276; }
+  .day-btn.active { border-color: #1a5276; background: #1a5276; color: #fff; }
+
+  /* Surgery grid */
+  .surgery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 0;
+  }
+  .surgery-card {
+    background: #fff; border-radius: 14px;
+    padding: 14px 16px;
+    box-shadow: 0 2px 8px rgba(26,82,118,.06);
+    border: 1.5px solid #e8f0f7;
+  }
+  .surgery-card-name { font-weight: 800; color: #1a5276; font-size: 14px; margin-bottom: 10px; }
+  .badge-row { display: flex; gap: 6px; }
+  .cl-badge {
+    flex: 1; padding: 7px 4px; border-radius: 8px;
+    font-size: 11px; font-weight: 700; cursor: pointer;
+    border: 1.5px solid #d5e8f5; background: #f8fbfd; color: #5d8aa8;
+    transition: all .12s; text-align: center;
+  }
+  .cl-badge:hover { border-color: #1a5276; color: #1a5276; }
+  .cl-badge.partial { border-color: #f39c12; background: #fef9ee; color: #e67e22; }
+  .cl-badge.done    { border-color: #27ae60; background: #eafaf1; color: #27ae60; }
+
+  /* ── CHECKLIST ── */
+  .cl-wrap { max-width: 600px; margin: 0 auto; padding: 24px 16px; }
+  .cl-header {
+    background: #fff; border-radius: 14px;
+    padding: 16px 20px; margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(26,82,118,.07);
+    display: flex; align-items: center; gap: 14px;
+  }
+  .back-btn {
+    background: none; border: none; color: #1a5276;
+    font-weight: 700; font-size: 14px; cursor: pointer; padding: 0;
+    white-space: nowrap;
+  }
+  .cl-titles { flex: 1; }
+  .cl-title { font-weight: 800; font-size: 17px; color: #1a5276; }
+  .cl-sub { font-size: 12px; color: #7f8c8d; margin-top: 2px; }
+  .progress-ring-wrap { flex-shrink: 0; }
+
+  .item-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .item-row {
+    display: flex; align-items: flex-start; gap: 12px;
+    background: #fff; border-radius: 10px; padding: 12px 16px;
+    border: 1.5px solid #e8f0f7; cursor: pointer;
+    transition: border-color .1s, background .1s;
+  }
+  .item-row:hover { border-color: #aed6f1; }
+  .item-row.checked { background: #eafaf1; border-color: #a9dfbf; }
+  .item-row input[type=checkbox] {
+    width: 18px; height: 18px; accent-color: #27ae60;
+    cursor: pointer; flex-shrink: 0; margin-top: 1px;
+  }
+  .item-text { font-size: 13px; color: #2c3e50; line-height: 1.45; }
+  .item-row.checked .item-text { color: #27ae60; font-weight: 600; }
+
+  .sig-section {
+    background: #fff; border-radius: 14px; padding: 18px 20px;
+    box-shadow: 0 2px 8px rgba(26,82,118,.07); margin-bottom: 24px;
+  }
+  .sig-title { font-weight: 700; font-size: 14px; color: #1a5276; margin-bottom: 12px; }
+  .sig-input {
+    width: 100%; border: 1.5px solid #d5e8f5; border-radius: 8px;
+    padding: 10px 14px; font-size: 13px; margin-bottom: 10px;
+    outline: none; font-family: inherit; transition: border-color .15s;
+  }
+  .sig-input:focus { border-color: #1a5276; }
+  .sig-input:disabled { background: #f8f8f8; color: #aaa; }
+  .submit-btn {
+    width: 100%; padding: 14px; border: none; border-radius: 10px;
+    background: #27ae60; color: #fff; font-weight: 700;
+    font-size: 15px; cursor: pointer; font-family: inherit;
+    transition: background .15s;
+  }
+  .submit-btn:hover:not(:disabled) { background: #1e8449; }
+  .submit-btn:disabled { background: #bdc3c7; cursor: not-allowed; font-size: 13px; }
+  .submitted-badge {
+    background: #eafaf1; border: 1.5px solid #27ae60; color: #27ae60;
+    border-radius: 10px; padding: 14px; font-weight: 700;
+    font-size: 13px; text-align: center;
+  }
+
+  /* ── REPORT ── */
+  .report-wrap { max-width: 860px; margin: 0 auto; padding: 24px 16px; }
+  .report-header {
+    background: #fff; border-radius: 14px; padding: 16px 20px;
+    margin-bottom: 16px; box-shadow: 0 2px 8px rgba(26,82,118,.07);
+    display: flex; align-items: center; gap: 14px;
+  }
+  .report-title { font-weight: 800; font-size: 17px; color: #1a5276; }
+
+  .report-stats {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr));
+    gap: 10px; margin-bottom: 20px;
+  }
+  .stat-card {
+    background: #fff; border-radius: 12px; padding: 14px 16px;
+    box-shadow: 0 2px 6px rgba(26,82,118,.06); text-align: center;
+  }
+  .stat-num { font-size: 28px; font-weight: 800; color: #1a5276; }
+  .stat-label { font-size: 11px; color: #7f8c8d; font-weight: 600; margin-top: 2px; }
+
+  .report-list { display: flex; flex-direction: column; gap: 12px; }
+  .report-card {
+    background: #fff; border-radius: 14px; padding: 16px 20px;
+    box-shadow: 0 2px 8px rgba(26,82,118,.06);
+    border-left: 4px solid #27ae60;
+  }
+  .report-card.incomplete { border-left-color: #e67e22; }
+  .report-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+  .report-card-id { font-weight: 800; font-size: 15px; color: #1a5276; }
+  .report-card-type { color: #5d8aa8; font-size: 13px; font-weight: 600; }
+  .report-card-day { color: #95a5a6; font-size: 12px; }
+  .report-status-full { background: #eafaf1; color: #27ae60; font-weight: 700; font-size: 12px; padding: 3px 12px; border-radius: 20px; }
+  .report-status-part { background: #fef9ee; color: #e67e22; font-weight: 700; font-size: 12px; padding: 3px 12px; border-radius: 20px; }
+  .report-meta { font-size: 12px; color: #7f8c8d; margin-bottom: 3px; }
+  .report-meta strong { color: #2c3e50; }
+  .missing-box {
+    background: #fdf2f2; border: 1px solid #f5c6cb; border-radius: 8px;
+    padding: 10px 14px; margin-top: 10px;
+  }
+  .missing-title { color: #c0392b; font-weight: 700; font-size: 12px; margin-bottom: 5px; }
+  .missing-item { color: #c0392b; font-size: 11px; margin-bottom: 3px; }
+
+  .empty-state {
+    text-align: center; color: #95a5a6; padding: 60px 20px;
+    font-size: 14px;
+  }
+  .empty-state .emoji { font-size: 40px; margin-bottom: 12px; }
+
+  /* Loading overlay */
+  #loading-overlay {
+    position: fixed; inset: 0; background: rgba(238,242,247,.92);
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; z-index: 999; gap: 14px;
+  }
+  .spinner {
+    width: 42px; height: 42px; border: 4px solid #d5e8f5;
+    border-top-color: #1a5276; border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-weight: 700; color: #1a5276; font-size: 14px; }
+
+  /* Toast */
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: #1a5276; color: #fff; padding: 12px 22px; border-radius: 10px;
+    font-weight: 700; font-size: 14px; z-index: 999;
+    transition: transform .3s ease; pointer-events: none;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 500px) {
+    .surgery-grid { grid-template-columns: 1fr 1fr; }
+    .topbar { padding: 0 12px; }
+    .report-btn span { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Connecting to database…</div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <svg class="tooth-icon" viewBox="0 0 36 36" fill="none">
+      <ellipse cx="18" cy="22" rx="11" ry="9" fill="#1a5276" opacity="0.12"/>
+      <path d="M8 15 Q10 5 18 8 Q26 5 28 15 Q30 25 23 29 Q18 32 13 29 Q6 25 8 15Z" fill="#1a5276"/>
+      <path d="M18 11 Q21 16 18 21 Q15 16 18 11Z" fill="white" opacity="0.35"/>
+    </svg>
+    <div>
+      <div class="brand-name">Edgerton Dental Clinic</div>
+      <div class="brand-sub">& Implant Centre — Surgery Checklists</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="date-chip" id="date-chip"></div>
+    <button class="report-btn" onclick="showReport()">
+      📋 <span>Manager Report</span>
+    </button>
+  </div>
+</div>
+
+<!-- ── HOME VIEW ── -->
+<div id="view-home" class="view active">
+  <div class="home-wrap">
+    <div class="section-label">Select Day</div>
+    <div class="day-row" id="day-row"></div>
+    <div class="section-label">Surgeries</div>
+    <div class="surgery-grid" id="surgery-grid"></div>
+  </div>
+</div>
+
+<!-- ── CHECKLIST VIEW ── -->
+<div id="view-checklist" class="view">
+  <div class="cl-wrap">
+    <div class="cl-header">
+      <button class="back-btn" onclick="showHome()">← Back</button>
+      <div class="cl-titles">
+        <div class="cl-title" id="cl-title"></div>
+        <div class="cl-sub" id="cl-sub"></div>
+      </div>
+      <div class="progress-ring-wrap">
+        <svg viewBox="0 0 36 36" width="56" height="56" id="progress-ring-svg">
+          <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e8f0f7" stroke-width="3"/>
+          <circle id="ring-fill" cx="18" cy="18" r="15.9" fill="none" stroke="#1a5276"
+            stroke-width="3" stroke-dasharray="0 100" stroke-linecap="round"
+            stroke-dashoffset="25" transform="rotate(-90 18 18)"/>
+          <text id="ring-text" x="18" y="22" text-anchor="middle" font-size="8"
+            fill="#1a5276" font-weight="700" font-family="Inter,sans-serif"></text>
+        </svg>
+      </div>
+    </div>
+    <div class="item-list" id="item-list"></div>
+    <div class="sig-section">
+      <div class="sig-title">Signatures</div>
+      <input class="sig-input" id="nurse-input" type="text" placeholder="Nurse name / signature"/>
+      <input class="sig-input" id="manager-input" type="text" placeholder="Manager name / signature (optional)"/>
+      <div id="submit-area"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── REPORT VIEW ── -->
+<div id="view-report" class="view">
+  <div class="report-wrap">
+    <div class="report-header">
+      <button class="back-btn" onclick="showHome()">← Back</button>
+      <div class="report-title">Manager Report</div>
+    </div>
+    <div class="section-label">Filter by Day</div>
+    <div class="day-row" id="report-day-row"></div>
+    <div class="report-stats" id="report-stats"></div>
+    <div class="section-label">Completed Checklists</div>
+    <div class="report-list" id="report-list"></div>
+  </div>
+</div>
+
+<!-- ── FIREBASE ── -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, query, where, orderBy, getDocs }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ── CONFIG ────────────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyCZbDZNh7WvrJ__gdhfAF9pFiY27v9t4i4",
+  authDomain: "edgerton-checklist.firebaseapp.com",
+  projectId: "edgerton-checklist",
+  storageBucket: "edgerton-checklist.firebasestorage.app",
+  messagingSenderId: "334565583988",
+  appId: "1:334565583988:web:c6ec2cc8642d7c27383521",
+  measurementId: "G-5GVG7TM5MZ"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+// ── DATA ──────────────────────────────────────────────────────────────────
+const START_ITEMS = [
+  "Computer Switched on","Compressor Switched on",
+  "Dental Chair Switched on and in working order",
+  "Water Distiller Switched on/full","Surfaces Cleaned and disinfected",
+  "DUWL water feed full","DUWLs purged - 2mins",
+  "Correct materials available and in date*",
+  "Correct number of instruments available",
+  "Instruments within expiry date*","Impression disinfection bath filled",
+  "Patient MH records available","Laboratory work available and disinfected",
+  "X-Ray developer on and test X-Ray processed",
+  "X-ray Equipment checked for leakage/cracks",
+  "Cleaning and disinfected wipes/materials available and full",
+  "Hand decontamination products available and fully stocked",
+  "Sufficient hand towels available","Current up-to-date day list present",
+  "Instrument transportation boxes present"
+];
+const END_ITEMS = [
+  "All contaminated instruments removed from the surgery/reprocessed",
+  "Spittoon Decontaminated","Aspirator cleaned/disinfected",
+  "Aspirator Filters removed, cleaned and disinfected",
+  "Purge dental unit water lines",
+  "Remove water bottle if applicable and store neck down",
+  "Surfaces cleaned and disinfected","Surgery chair cleaned and disinfected",
+  "Surgery chair left in upright position","Remove clinical waste from surgery",
+  "Remove general waste from surgery","Sharps containers checked",
+  "Clean and disinfect all sinks (including hand wash basins)",
+  "All stock/materials stored appropriately",
+  "Laboratory work checked for the following day/disinfected",
+  "All equipment turned off","Prescription pads locked away",
+  "Manual records/MH forms filled away with cabinets locked",
+  "Computer switched off","Any faults reported to Manager",
+  "Windows locked/secure","Surgery secure"
+];
+const DAYS     = ["Mon","Tues","Weds","Thurs","Fri"];
+const SURGERIES= Array.from({length:10},(_,i)=>`Surgery ${i+1}`);
+
+// ── STATE ─────────────────────────────────────────────────────────────────
+let selectedDay  = DAYS[0];
+let selectedSurg = null;
+let selectedType = null; // 'start'|'end'
+let currentDoc   = null; // live Firestore data for open checklist
+let homeCache    = {};   // key→{checked,total,submitted}
+let reportFilter = "All";
+let homeListeners= [];
+
+// ── HELPERS ───────────────────────────────────────────────────────────────
+function docId(surgery, day, type) {
+  return `${surgery.replace(/ /g,'_')}__${day}__${type}`;
+}
+function itemsFor(type) { return type==='start'?START_ITEMS:END_ITEMS; }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2800);
+}
+function setLoading(on) {
+  document.getElementById('loading-overlay').style.display = on ? 'flex' : 'none';
+}
+
+// ── DATE CHIP ─────────────────────────────────────────────────────────────
+const today = new Date();
+document.getElementById('date-chip').textContent =
+  today.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+// Auto-select today's day
+const dayMap = {1:'Mon',2:'Tues',3:'Weds',4:'Thurs',5:'Fri'};
+if (dayMap[today.getDay()]) selectedDay = dayMap[today.getDay()];
+
+// ── BUILD HOME ────────────────────────────────────────────────────────────
+function buildDayRow(containerId, current, onChange) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  DAYS.forEach(d => {
+    const btn = document.createElement('button');
+    btn.className = 'day-btn' + (d===current?' active':'');
+    btn.textContent = d;
+    btn.onclick = () => onChange(d);
+    el.appendChild(btn);
+  });
+}
+
+function buildHome() {
+  buildDayRow('day-row', selectedDay, d => {
+    selectedDay = d;
+    buildHome();
+  });
+  const grid = document.getElementById('surgery-grid');
+  grid.innerHTML = '';
+
+  // Unsubscribe previous listeners
+  homeListeners.forEach(u => u());
+  homeListeners = [];
+
+  SURGERIES.forEach(surg => {
+    const card = document.createElement('div');
+    card.className = 'surgery-card';
+    card.innerHTML = `<div class="surgery-card-name">${surg}</div><div class="badge-row" id="badges-${surg.replace(/ /g,'_')}"></div>`;
+    grid.appendChild(card);
+
+    ['start','end'].forEach(type => {
+      const id = docId(surg, selectedDay, type);
+      const ref = doc(db,'checklists', id);
+      const unsub = onSnapshot(ref, snap => {
+        const data = snap.exists() ? snap.data() : null;
+        const total = itemsFor(type).length;
+        const checked = data ? Object.values(data.items||{}).filter(Boolean).length : 0;
+        const submitted = data?.submittedAt || null;
+        homeCache[id] = {checked, total, submitted};
+        refreshBadges(surg);
+      });
+      homeListeners.push(unsub);
+    });
+  });
+}
+
+function refreshBadges(surg) {
+  const row = document.getElementById('badges-'+surg.replace(/ /g,'_'));
+  if (!row) return;
+  row.innerHTML = '';
+  ['start','end'].forEach(type => {
+    const id  = docId(surg, selectedDay, type);
+    const cache = homeCache[id] || {checked:0, total: itemsFor(type).length, submitted:null};
+    const pct = Math.round((cache.checked/cache.total)*100);
+    const btn = document.createElement('button');
+    btn.className = 'cl-badge' + (cache.submitted?' done': cache.checked>0?' partial':'');
+    btn.textContent = cache.submitted
+      ? `✓ ${type==='start'?'Start':'End'}`
+      : cache.checked>0
+        ? `▶ ${type==='start'?'Start':'End'} ${pct}%`
+        : `+ ${type==='start'?'Start':'End'}`;
+    btn.onclick = () => openChecklist(surg, selectedDay, type);
+    row.appendChild(btn);
+  });
+}
+
+// ── CHECKLIST ─────────────────────────────────────────────────────────────
+let clUnsubscribe = null;
+
+async function openChecklist(surg, day, type) {
+  selectedSurg = surg; selectedType = type;
+  document.getElementById('cl-title').textContent =
+    (type==='start'?'Start of Day':'End of Day') + ' Checklist';
+  document.getElementById('cl-sub').textContent = `${surg} · ${day}`;
+
+  showView('checklist');
+  setLoading(true);
+
+  if (clUnsubscribe) { clUnsubscribe(); clUnsubscribe = null; }
+
+  const id  = docId(surg, day, type);
+  const ref = doc(db, 'checklists', id);
+
+  clUnsubscribe = onSnapshot(ref, snap => {
+    currentDoc = snap.exists() ? snap.data() : {items:{}, nurseSignature:'', managerSignature:'', submittedAt:null};
+    renderChecklist(type, currentDoc);
+    setLoading(false);
+  });
+}
+
+function renderChecklist(type, data) {
+  const items    = itemsFor(type);
+  const checked  = items.filter(i => data.items?.[i]).length;
+  const total    = items.length;
+  const submitted = data.submittedAt;
+
+  // Progress ring
+  const pct = (checked/total)*100;
+  document.getElementById('ring-fill').setAttribute('stroke-dasharray', `${pct} 100`);
+  document.getElementById('ring-fill').setAttribute('stroke', checked===total?'#27ae60':'#1a5276');
+  document.getElementById('ring-text').textContent = `${checked}/${total}`;
+
+  // Item list
+  const list = document.getElementById('item-list');
+  list.innerHTML = '';
+  items.forEach(item => {
+    const row = document.createElement('label');
+    row.className = 'item-row' + (data.items?.[item]?' checked':'');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = !!data.items?.[item];
+    if (submitted) cb.disabled = true;
+    cb.onchange = () => toggleItem(item, cb.checked);
+    const span = document.createElement('span');
+    span.className = 'item-text'; span.textContent = item;
+    row.appendChild(cb); row.appendChild(span);
+    list.appendChild(row);
+  });
+
+  // Signatures
+  const ni = document.getElementById('nurse-input');
+  const mi = document.getElementById('manager-input');
+  if (submitted) {
+    ni.value = data.nurseSignature || ''; ni.disabled = true;
+    mi.value = data.managerSignature || ''; mi.disabled = true;
+  } else {
+    ni.disabled = false; mi.disabled = false;
+    if (!ni.value && data.nurseSignature) ni.value = data.nurseSignature;
+    if (!mi.value && data.managerSignature) mi.value = data.managerSignature;
+  }
+
+  // Submit area
+  const area = document.getElementById('submit-area');
+  if (submitted) {
+    const d = data.submittedAt.toDate ? data.submittedAt.toDate() : new Date(data.submittedAt);
+    area.innerHTML = `<div class="submitted-badge">✓ Submitted — ${d.toLocaleString('en-GB')}</div>`;
+  } else {
+    const allDone = checked === total;
+    const btn = document.createElement('button');
+    btn.className = 'submit-btn';
+    if (!allDone) {
+      btn.textContent = `Complete all items first (${total-checked} remaining)`;
+      btn.disabled = true;
+    } else {
+      btn.textContent = 'Submit Checklist';
+      btn.disabled = false;
+      btn.onclick = submitChecklist;
+    }
+    area.innerHTML = ''; area.appendChild(btn);
+  }
+}
+
+async function toggleItem(item, val) {
+  const id  = docId(selectedSurg, selectedDay, selectedType);
+  const ref = doc(db, 'checklists', id);
+  const existing = currentDoc || {items:{}, nurseSignature:'', managerSignature:'', submittedAt:null};
+  await setDoc(ref, {
+    ...existing,
+    items: { ...existing.items, [item]: val },
+    surgery: selectedSurg, day: selectedDay, type: selectedType
+  }, {merge:true});
+}
+
+async function submitChecklist() {
+  const nurse   = document.getElementById('nurse-input').value.trim();
+  const manager = document.getElementById('manager-input').value.trim();
+  if (!nurse) { showToast('Please enter a nurse name.'); return; }
+
+  setLoading(true);
+  const id  = docId(selectedSurg, selectedDay, selectedType);
+  const ref = doc(db, 'checklists', id);
+  await setDoc(ref, {
+    ...currentDoc,
+    nurseSignature: nurse,
+    managerSignature: manager,
+    submittedAt: new Date(),
+    surgery: selectedSurg, day: selectedDay, type: selectedType
+  }, {merge:true});
+  setLoading(false);
+  showToast('✓ Checklist submitted!');
+}
+
+// ── REPORT ────────────────────────────────────────────────────────────────
+async function showReport() {
+  showView('report');
+  setLoading(true);
+  buildDayRow('report-day-row', reportFilter, async d => {
+    reportFilter = d;
+    await loadReport();
+    buildDayRow('report-day-row', reportFilter, async d2 => {
+      reportFilter = d2; await loadReport();
+    });
+  });
+  await loadReport();
+  setLoading(false);
+}
+
+async function loadReport() {
+  const listEl  = document.getElementById('report-list');
+  const statsEl = document.getElementById('report-stats');
+  listEl.innerHTML = '<div class="empty-state"><div class="spinner" style="margin:0 auto"></div></div>';
+
+  const colRef = collection(db, 'checklists');
+  const snap   = await getDocs(colRef);
+
+  let docs = [];
+  snap.forEach(d => { if (d.data().submittedAt) docs.push(d.data()); });
+
+  if (reportFilter !== 'All') docs = docs.filter(d => d.day === reportFilter);
+
+  // Sort newest first
+  docs.sort((a,b) => {
+    const at = a.submittedAt?.toDate ? a.submittedAt.toDate() : new Date(a.submittedAt||0);
+    const bt = b.submittedAt?.toDate ? b.submittedAt.toDate() : new Date(b.submittedAt||0);
+    return bt-at;
+  });
+
+  // Stats
+  const totalSubmitted = docs.length;
+  const fullyComplete  = docs.filter(d => {
+    const items = itemsFor(d.type);
+    return items.every(i => d.items?.[i]);
+  }).length;
+  const startCount = docs.filter(d=>d.type==='start').length;
+  const endCount   = docs.filter(d=>d.type==='end').length;
+
+  statsEl.innerHTML = `
+    <div class="stat-card"><div class="stat-num">${totalSubmitted}</div><div class="stat-label">Total Submitted</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:#27ae60">${fullyComplete}</div><div class="stat-label">Fully Complete</div></div>
+    <div class="stat-card"><div class="stat-num">${startCount}</div><div class="stat-label">Start of Day</div></div>
+    <div class="stat-card"><div class="stat-num">${endCount}</div><div class="stat-label">End of Day</div></div>
+  `;
+
+  if (docs.length === 0) {
+    listEl.innerHTML = `<div class="empty-state"><div class="emoji">📋</div>No completed checklists${reportFilter!=='All'?' for '+reportFilter:''}.</div>`;
+    return;
+  }
+
+  listEl.innerHTML = '';
+  docs.forEach(d => {
+    const items   = itemsFor(d.type);
+    const checked = items.filter(i => d.items?.[i]).length;
+    const allDone = checked === items.length;
+    const missing = items.filter(i => !d.items?.[i]);
+    const subDate = d.submittedAt?.toDate ? d.submittedAt.toDate() : new Date(d.submittedAt);
+
+    const card = document.createElement('div');
+    card.className = 'report-card' + (allDone?'':' incomplete');
+    card.innerHTML = `
+      <div class="report-card-top">
+        <div>
+          <span class="report-card-id">${d.surgery}</span>
+          <span class="report-card-type"> · ${d.type==='start'?'Start of Day':'End of Day'}</span>
+          <span class="report-card-day"> · ${d.day}</span>
+        </div>
+        <span class="${allDone?'report-status-full':'report-status-part'}">${allDone?'✓ Complete':`${checked}/${items.length}`}</span>
+      </div>
+      <div class="report-meta">Nurse: <strong>${d.nurseSignature||'—'}</strong>${d.managerSignature?` · Manager: <strong>${d.managerSignature}</strong>`:''}</div>
+      <div class="report-meta">Submitted: <strong>${subDate.toLocaleString('en-GB')}</strong></div>
+      ${missing.length>0?`<div class="missing-box"><div class="missing-title">⚠ Not completed:</div>${missing.map(m=>`<div class="missing-item">• ${m}</div>`).join('')}</div>`:''}
+    `;
+    listEl.appendChild(card);
+  });
+}
+
+// ── NAVIGATION ────────────────────────────────────────────────────────────
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  window.scrollTo(0,0);
+}
+function showHome() {
+  if (clUnsubscribe) { clUnsubscribe(); clUnsubscribe = null; }
+  showView('home');
+  buildHome();
+}
+
+window.showHome   = showHome;
+window.showReport = showReport;
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+buildHome();
+setLoading(false);
+</script>
+</body>
+</html>
