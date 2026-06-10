@@ -225,6 +225,49 @@
   }
   #toast.show { transform: translateX(-50%) translateY(0); }
 
+  /* ── PASSWORD MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(15,30,50,.55);
+    backdrop-filter: blur(3px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 200; padding: 20px;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal-box {
+    background: #fff; border-radius: 18px;
+    padding: 32px 28px; width: 100%; max-width: 360px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.2);
+    text-align: center;
+  }
+  .modal-icon { font-size: 36px; margin-bottom: 12px; }
+  .modal-title { font-weight: 800; font-size: 18px; color: #1a5276; margin-bottom: 6px; }
+  .modal-sub { font-size: 13px; color: #7f8c8d; margin-bottom: 22px; }
+  .modal-input {
+    width: 100%; border: 2px solid #d5e8f5; border-radius: 10px;
+    padding: 12px 16px; font-size: 15px; font-family: inherit;
+    outline: none; text-align: center; letter-spacing: .15em;
+    margin-bottom: 12px; transition: border-color .15s;
+  }
+  .modal-input:focus { border-color: #1a5276; }
+  .modal-input.error { border-color: #e74c3c; animation: shake .3s; }
+  @keyframes shake {
+    0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)}
+  }
+  .modal-btn {
+    width: 100%; padding: 13px; border: none; border-radius: 10px;
+    background: #1a5276; color: #fff; font-weight: 700;
+    font-size: 15px; cursor: pointer; font-family: inherit;
+    transition: background .15s; margin-bottom: 8px;
+  }
+  .modal-btn:hover { background: #154360; }
+  .modal-cancel {
+    width: 100%; padding: 10px; border: none; background: none;
+    color: #95a5a6; font-size: 13px; cursor: pointer; font-family: inherit;
+  }
+  .modal-cancel:hover { color: #1a5276; }
+  .modal-error { color: #e74c3c; font-size: 12px; font-weight: 600; margin-bottom: 10px; min-height: 18px; }
+
   @media (max-width: 500px) {
     .surgery-grid { grid-template-columns: 1fr 1fr; }
     .topbar { padding: 0 12px; }
@@ -310,12 +353,26 @@
     <div class="report-header">
       <button class="back-btn" onclick="showHome()">← Back</button>
       <div class="report-title">Manager Report</div>
+    <button onclick="lockReport()" style="margin-left:auto;background:#fdf2f2;border:1.5px solid #f5c6cb;color:#c0392b;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;">🔒 Lock</button>
     </div>
     <div class="section-label">Filter by Day</div>
     <div class="day-row" id="report-day-row"></div>
     <div class="report-stats" id="report-stats"></div>
     <div class="section-label">Completed Checklists</div>
     <div class="report-list" id="report-list"></div>
+  </div>
+</div>
+
+<!-- ── PASSWORD MODAL ── -->
+<div class="modal-overlay hidden" id="password-modal">
+  <div class="modal-box">
+    <div class="modal-icon">🔒</div>
+    <div class="modal-title">Manager Access</div>
+    <div class="modal-sub">Enter the manager password to view the report</div>
+    <input class="modal-input" id="password-input" type="password" placeholder="Password" maxlength="30"/>
+    <div class="modal-error" id="password-error"></div>
+    <button class="modal-btn" id="password-confirm">Unlock Report</button>
+    <button class="modal-cancel" id="password-cancel">Cancel</button>
   </div>
 </div>
 
@@ -590,8 +647,51 @@ async function submitChecklist() {
   showToast('✓ Checklist submitted!');
 }
 
+// ── PASSWORD ──────────────────────────────────────────────────────────────
+// Change this to whatever password you want the manager to use
+const MANAGER_PASSWORD = 'Edgerton2024';
+let managerUnlocked = false;
+
+function openPasswordModal() {
+  const modal = document.getElementById('password-modal');
+  const input = document.getElementById('password-input');
+  const err   = document.getElementById('password-error');
+  input.value = ''; err.textContent = '';
+  input.classList.remove('error');
+  modal.classList.remove('hidden');
+  setTimeout(() => input.focus(), 100);
+}
+function closePasswordModal() {
+  document.getElementById('password-modal').classList.add('hidden');
+}
+function checkPassword() {
+  const input = document.getElementById('password-input');
+  const err   = document.getElementById('password-error');
+  if (input.value === MANAGER_PASSWORD) {
+    managerUnlocked = true;
+    closePasswordModal();
+    openReport();
+  } else {
+    err.textContent = 'Incorrect password. Please try again.';
+    input.classList.add('error');
+    input.value = '';
+    setTimeout(() => input.classList.remove('error'), 400);
+    setTimeout(() => input.focus(), 50);
+  }
+}
+// Enter key on password field
+document.getElementById('password-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') checkPassword();
+});
+document.getElementById('password-confirm').addEventListener('click', checkPassword);
+document.getElementById('password-cancel').addEventListener('click', closePasswordModal);
+
 // ── REPORT ────────────────────────────────────────────────────────────────
-async function showReport() {
+function showReport() {
+  if (!managerUnlocked) { openPasswordModal(); return; }
+  openReport();
+}
+async function openReport() {
   showView('report');
   setLoading(true);
   buildDayRow('report-day-row', reportFilter, async d => {
@@ -686,7 +786,9 @@ function showHome() {
 }
 
 window.showHome   = showHome;
+function lockReport() { managerUnlocked = false; showHome(); showToast("Report locked."); }
 window.showReport = showReport;
+window.lockReport  = lockReport;
 
 // ── INIT ──────────────────────────────────────────────────────────────────
 buildHome();
